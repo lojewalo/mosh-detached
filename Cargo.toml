@@ -1,0 +1,8 @@
+[package]
+name = "mosh-detached"
+version = "0.1.0"
+authors = ["Kyle Clemens <jkc.clemens@gmail.com>"]
+
+[dependencies]
+libc = "0.2"
+error-chain = "0.2"
