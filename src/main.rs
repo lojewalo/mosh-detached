@@ -16,23 +16,23 @@ macro_rules! println_stderr {
   ($fmt:expr, $($arg:tt)*) => { { writeln!(std::io::stderr(), $fmt, $($arg)*).expect("error writing to stderr"); } };
 }
 
-fn get_unattached_servers() -> Result<Vec<String>> {
+fn get_username() -> Result<String> {
   let pw = unsafe { getpwuid(geteuid()) };
   if pw.is_null() {
     return Err("getpwuid".into());
   }
   let pw = match unsafe { pw.as_ref() } {
     Some(x) => x,
-    None => {
-      return Err(format!("could not get passwd").into());
-    }
+    None => return Err("could not get passwd".into())
   };
-  let username = match unsafe { CStr::from_ptr(pw.pw_name) }.to_str() {
-    Ok(x) => x,
-    Err(e) => {
-      return Err(format!("could not get username from passwd: {}", e).into());
-    }
-  };
+  match unsafe { CStr::from_ptr(pw.pw_name) }.to_str() {
+    Ok(x) => Ok(x.to_owned()),
+    Err(e) => Err(format!("could not get username from passwd: {}", e).into())
+  }
+}
+
+fn get_unattached_servers() -> Result<Vec<String>> {
+  let username = try!(get_username());
   let mut unattached_servers: Vec<String> = Vec::new();
   loop {
     let utm = unsafe { getutxent() };
@@ -41,9 +41,7 @@ fn get_unattached_servers() -> Result<Vec<String>> {
     }
     let utm = match unsafe { utm.as_ref() } {
       Some(x) => x,
-      None => {
-        return Err(format!("could not get utmpx entity").into());
-      }
+      None => return Err("could not get utmpx entity".into())
     };
     if utm.ut_type != USER_PROCESS {
       continue;
@@ -51,20 +49,16 @@ fn get_unattached_servers() -> Result<Vec<String>> {
     let user = utm.ut_user;
     let user = match unsafe { CStr::from_ptr(user.as_ptr()) }.to_str() {
       Ok(x) => x,
-      Err(e) => {
-        return Err(format!("could not get user: {}", e).into());
-      }
+      Err(e) => return Err(format!("could not get user: {}", e).into())
     };
     if user != username {
       continue;
     }
     let text = match unsafe { CStr::from_ptr(utm.ut_host.as_ptr()) }.to_str() {
       Ok(x) => x,
-      Err(e) => {
-        return Err(format!("could not get text: {}", e).into());
-      }
+      Err(e) => return Err(format!("could not get text: {}", e).into())
     };
-    if text.len() < 5 || !text.starts_with("mosh ") || !text.ends_with("]") {
+    if text.len() < 5 || !text.starts_with("mosh ") || !text.ends_with(']') {
       continue;
     }
     unattached_servers.push(text.to_owned());
@@ -75,7 +69,7 @@ fn get_unattached_servers() -> Result<Vec<String>> {
 fn get_pids(servers: Vec<String>) -> Vec<isize> {
   servers
     .iter()
-    .flat_map(|x| x.split("["))
+    .flat_map(|x| x.split('['))
     .filter(|x| x.len() > 1)
     .map(|x| &x[0..x.len() - 1])
     .map(|x| x.parse::<isize>())
