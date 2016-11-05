@@ -32,7 +32,7 @@ fn get_username() -> Result<String> {
 }
 
 fn get_unattached_servers() -> Result<Vec<String>> {
-  let username = try!(get_username());
+  let username = get_username()?;
   let mut unattached_servers: Vec<String> = Vec::new();
   loop {
     let utm = unsafe { getutxent() };
