@@ -66,10 +66,10 @@ fn get_unattached_servers() -> Result<Vec<String>> {
   Ok(unattached_servers)
 }
 
-fn get_pids(servers: Vec<String>) -> Vec<isize> {
+fn get_pids<S: AsRef<str>>(servers: &[S]) -> Vec<isize> {
   servers
     .iter()
-    .flat_map(|x| x.split('['))
+    .flat_map(|x| x.as_ref().split('['))
     .filter(|x| x.len() > 1)
     .map(|x| &x[0..x.len() - 1])
     .map(|x| x.parse::<isize>())
@@ -85,7 +85,7 @@ fn inner() -> i32 {
       return 1;
     }
   };
-  for unattached_server in get_pids(unattached_servers) {
+  for unattached_server in get_pids(&unattached_servers) {
     println!("{}", unattached_server);
   }
   0
